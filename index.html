@@ -787,12 +787,18 @@
     tr.classList.add('row-hidden');
     recalcAll();
     document.getElementById('btn-restore').style.display = tbody.querySelector('tr.row-hidden') ? '' : 'none';
+    // Persist hidden weeks to Firebase
+    const hidden = {};
+    tbody.querySelectorAll('tr.row-hidden').forEach(r => { hidden[r.dataset.week] = true; });
+    fbSave('hiddenWeeks', Object.keys(hidden).length ? hidden : null);
   }
 
   function restoreAll() {
     tbody.querySelectorAll('tr.row-hidden').forEach(tr => tr.classList.remove('row-hidden'));
     document.getElementById('btn-restore').style.display = 'none';
     recalcAll();
+    // Clear hidden weeks in Firebase
+    fbSave('hiddenWeeks', null);
   }
 
   function showToast(msg, isError) {
@@ -1126,25 +1132,7 @@
 
   // ── FIREBASE SAVE HELPERS ─────────────────────────────────────────────────
 
-  function saveHiddenWeeks() {
-    const hidden = {};
-    tbody.querySelectorAll('tr.row-hidden').forEach(r => { hidden[r.dataset.week] = true; });
-    fbSave('hiddenWeeks', Object.keys(hidden).length ? hidden : null);
-  }
-
-  // Patch deleteRow to persist
-  const _origDeleteRow = deleteRow;
-  deleteRow = function(tr) {
-    _origDeleteRow(tr);
-    saveHiddenWeeks();
-  };
-
-  // Patch restoreAll to persist
-  const _origRestoreAll = restoreAll;
-  restoreAll = function() {
-    _origRestoreAll();
-    fbSave('hiddenWeeks', null);
-  };
+  // (deleteRow and restoreAll already save to Firebase directly)
 
   // Debounced save for initial stock
   document.getElementById('initial-stock').addEventListener('input', debounce(e => {
