@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Stock Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --accent: #f0a500;
+    --green: #3fb950;
+    --red: #f85149;
+    --bunge: #e07b54;
+    --cargill: #58a6ff;
+    --adm: #bc8cff;
+    --admp: #e879a0;
+  }
+
+  body {
+    background: #07090d;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 60px;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 1400px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .logo { display: flex; align-items: center; gap: 10px; }
+
+  .logo-icon {
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700; font-size: 11px; color: #000;
+  }
+
+  .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-sub  { font-size: 10px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  .header-stats { display: flex; gap: 24px; align-items: center; }
+  .stat { text-align: right; }
+  .stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; font-family: 'IBM Plex Mono', monospace; }
+  .stat-val   { font-size: 17px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+  .stat-val.pos { color: var(--green); }
+  .stat-val.neg { color: var(--red); }
+
+  /* ── CONTROLS ── */
+  .controls {
+    padding: 10px 24px;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+
+  .controls label.text-label {
+    font-size: 11px; color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  .controls input[type="number"] {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 12px; border-radius: 5px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; width: 120px;
+    outline: none; transition: border-color 0.2s; -moz-appearance: textfield;
+  }
+  .controls input[type="number"]::-webkit-inner-spin-button,
+  .controls input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .controls input[type="number"]:focus { border-color: var(--accent); }
+
+  .divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+  .btn {
+    padding: 6px 14px; border-radius: 5px; border: none;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #ffb800; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn-excel { background: #1d6f42; color: #fff; border: 1px solid #2a9d5c; }
+  .btn-excel:hover { background: #238a50; }
+  .btn-import {
+    padding: 6px 14px; border-radius: 5px; border: 1px solid var(--cargill);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+    background: transparent; color: var(--cargill);
+  }
+  .btn-import:hover { background: rgba(88,166,255,0.1); }
+
+  /* ── FORMULA HINT ── */
+  .formula-hint {
+    font-size: 10px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace;
+    padding: 6px 24px; letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+
+  /* ── BODY AREA: table + sidebar ── */
+  .body-area {
+    display: flex;
+    background: var(--bg);
+    align-items: flex-start;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    flex: 1;
+    padding: 12px 20px 24px;
+    overflow-x: auto;
+    border-right: 1px solid var(--border);
+  }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 640px; }
+
+  thead th {
+    padding: 8px 10px; text-align: left; font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 1.3px;
+    text-transform: uppercase; font-weight: 500;
+    background: var(--bg); border-bottom: 2px solid var(--border);
+  }
+
+  th.col-week    { color: var(--text-muted); width: 55px; }
+  th.col-perday  { color: #a0b4c8; width: 80px; }
+  th.col-req     { color: var(--accent);  width: 100px; }
+  th.col-bunge   { color: var(--bunge);   width: 90px; }
+  th.col-cargill { color: var(--cargill); width: 90px; }
+  th.col-adm     { color: var(--adm);     width: 80px; }
+  th.col-admp    { color: var(--admp);    width: 80px; }
+  th.col-stock   { color: var(--green);   width: 90px; }
+  th.col-total   { color: #a0c4a0;        width: 90px; }
+  th.col-del     { width: 28px; }
+
+  /* Month row tints — subtle, alternating */
+  tr.month-1  td { background: rgba(240,165,  0, 0.04) !important; }
+  tr.month-2  td { background: rgba( 88,166,255, 0.04) !important; }
+  tr.month-3  td { background: rgba( 63,185, 80, 0.04) !important; }
+  tr.month-4  td { background: rgba(188,140,255, 0.04) !important; }
+  tr.month-5  td { background: rgba(224,123, 84, 0.05) !important; }
+  tr.month-6  td { background: rgba( 86,211,200, 0.04) !important; }
+  tr.month-7  td { background: rgba(248, 81, 73, 0.04) !important; }
+  tr.month-8  td { background: rgba(240,165,  0, 0.06) !important; }
+  tr.month-9  td { background: rgba( 88,166,255, 0.06) !important; }
+  tr.month-10 td { background: rgba( 63,185, 80, 0.06) !important; }
+  tr.month-11 td { background: rgba(188,140,255, 0.06) !important; }
+  tr.month-12 td { background: rgba(224,123, 84, 0.07) !important; }
+
+  /* Keep hover slightly brighter */
+  tbody tr:hover td { background: rgba(255,255,255,0.06) !important; }
+
+  /* Week label tint dot */
+  .week-month-dot {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    margin-right: 5px; vertical-align: middle; flex-shrink: 0;
+  }
+
+  .col-sum {
+    display: inline-block; font-size: 9px; font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    background: rgba(255,255,255,0.07); border-radius: 3px;
+    padding: 1px 5px; margin-left: 4px; letter-spacing: 0;
+    vertical-align: middle; opacity: 0; transition: opacity 0.2s;
+  }
+  .col-sum.visible { opacity: 1; }
+
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+  td { padding: 3px 10px; border-bottom: 1px solid rgba(48,54,61,0.4); }
+
+  .week-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-muted);
+    display: inline-block; background: var(--surface2); border-radius: 4px; padding: 2px 8px;
+  }
+
+  input[type="number"].cell-input {
+    width: 100%; min-width: 60px; background: transparent; border: 1px solid transparent;
+    color: var(--text); padding: 4px 8px; border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    text-align: right; outline: none; transition: all 0.15s; -moz-appearance: textfield;
+  }
+  input[type="number"].cell-input::-webkit-inner-spin-button,
+  input[type="number"].cell-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"].cell-input:hover  { border-color: var(--border); background: var(--surface); }
+  input[type="number"].cell-input:focus  { border-color: var(--cargill); background: var(--surface2); box-shadow: 0 0 0 2px rgba(88,166,255,0.1); }
+  input.req-input:focus     { border-color: var(--accent);  box-shadow: 0 0 0 2px rgba(240,165,0,0.1); }
+  input.bunge-input:focus   { border-color: var(--bunge);   box-shadow: 0 0 0 2px rgba(224,123,84,0.1); }
+  input.cargill-input:focus { border-color: var(--cargill); box-shadow: 0 0 0 2px rgba(88,166,255,0.1); }
+  input.adm-input:focus     { border-color: var(--adm);     box-shadow: 0 0 0 2px rgba(188,140,255,0.1); }
+  input.admp-input:focus    { border-color: var(--admp);    box-shadow: 0 0 0 2px rgba(232,121,160,0.1); }
+
+  .perday-cell {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: #a0b4c8; text-align: right; padding-right: 2px;
+  }
+
+  .total-cell {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    font-weight: 600; color: #a0c4a0; text-align: right; white-space: nowrap;
+  }
+  .total-cell.zero { color: var(--text-muted); font-weight: 400; }
+
+  .stock-cell { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; }
+  .stock-cell.pos  { color: var(--green); }
+  .stock-cell.neg  { color: var(--red); }
+  .stock-cell.zero { color: var(--text-muted); }
+
+  .stock-inner { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .dot.pos  { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .dot.neg  { background: var(--red);   box-shadow: 0 0 5px var(--red); }
+  .dot.zero { background: var(--text-muted); }
+
+  .btn-del {
+    background: transparent; border: none; cursor: pointer; color: var(--border);
+    padding: 2px 4px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .btn-del:hover { color: var(--red); background: rgba(248,81,73,0.12); }
+  .btn-del svg { width: 13px; height: 13px; }
+  tr.row-hidden { display: none; }
+
+  /* ── COMBINED SIDEBAR ── */
+  .combined-sidebar {
+    width: 620px;
+    flex-shrink: 0;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+  }
+
+  .sidebar-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+
+  .sidebar-col-title {
+    font-size: 9px; font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--text-muted); padding: 10px 14px;
+  }
+
+  .sidebar-col-title:not(:last-child) {
+    border-right: 1px solid var(--border);
+  }
+
+  .combined-month-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid rgba(48,54,61,0.35);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .combined-month-row:hover > div { background: rgba(255,255,255,0.02); }
+
+  .combined-cell {
+    padding: 0 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .combined-cell.summary { border-right: 1px solid rgba(48,54,61,0.35); }
+  .combined-cell.target  { border-right: 1px solid rgba(48,54,61,0.35); }
+
+  .avg-label {
+    font-size: 10px; font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  .avg-val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-weight: 600; color: var(--text);
+  }
+  .avg-val.zero { color: var(--text-muted); font-weight: 400; }
+
+  .avg-req-val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-weight: 600; color: var(--accent);
+  }
+  .avg-req-val.zero { color: var(--text-muted); font-weight: 400; }
+
+  .cell-month-name {
+    font-size: 11px; font-weight: 700; color: var(--text);
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .cell-month-weeks {
+    font-size: 9px; color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .cell-rows { display: flex; flex-direction: column; gap: 3px; }
+
+  .cell-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  }
+
+  .cell-row-label {
+    font-size: 10px; font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-shrink: 0;
+  }
+  .cell-row-label.bunge   { color: var(--bunge); }
+  .cell-row-label.cargill { color: var(--cargill); }
+  .cell-row-label.adm     { color: var(--adm); }
+  .cell-row-label.admp    { color: var(--admp); }
+
+  .month-row-val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-weight: 600; color: var(--text);
+  }
+  .month-row-val.zero { color: var(--text-muted); font-weight: 400; }
+
+  .target-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 3px 7px;
+    text-align: right;
+    outline: none;
+    transition: all 0.15s;
+    -moz-appearance: textfield;
+    min-width: 0;
+    width: 100%;
+  }
+  .target-input::-webkit-inner-spin-button,
+  .target-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .target-input:hover { border-color: var(--border); }
+  .target-input.bunge-t:focus   { border-color: var(--bunge);   background: var(--surface); box-shadow: 0 0 0 2px rgba(224,123,84,0.1); }
+  .target-input.cargill-t:focus { border-color: var(--cargill); background: var(--surface); box-shadow: 0 0 0 2px rgba(88,166,255,0.1); }
+  .target-input.adm-t:focus     { border-color: var(--adm);     background: var(--surface); box-shadow: 0 0 0 2px rgba(188,140,255,0.1); }
+  .target-input.admp-t:focus    { border-color: var(--admp);    background: var(--surface); box-shadow: 0 0 0 2px rgba(232,121,160,0.1); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 10px; color: var(--text-muted);
+    font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px;
+    border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1c2128; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 20px; font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+    color: var(--text); z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    transition: opacity 0.3s;
+  }
+
+  /* ── WARNING BANNER ── */
+  #warning-banner {
+    display: none;
+    background: #1a0d0d;
+    border-bottom: 1px solid rgba(248,81,73,0.35);
+    padding: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .warn-banner-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 24px;
+  }
+
+  .warn-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--red);
+  }
+  .warn-icon svg { width: 14px; height: 14px; }
+
+  .warn-title-text {
+    font-size: 11px; font-weight: 700; color: var(--red);
+    font-family: 'IBM Plex Sans', sans-serif;
+    white-space: nowrap;
+    margin-right: 8px;
+    flex-shrink: 0;
+    line-height: 1.8;
+  }
+
+  .warn-chips {
+    display: flex; flex-wrap: wrap; gap: 5px; flex: 1;
+    align-items: center;
+  }
+
+  .warn-chip {
+    background: rgba(248,81,73,0.12);
+    border: 1px solid rgba(248,81,73,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .warn-chip strong { color: var(--red); }
+
+  .warn-dismiss {
+    flex-shrink: 0;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 16px; line-height: 1;
+    padding: 2px 0 0 4px;
+    transition: color 0.15s;
+  }
+  .warn-dismiss:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">ST</div>
+      <div>
+        <div class="logo-text">Stock Tracker</div>
+        <div class="logo-sub">Weekly Supply Planner</div>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat">
+        <div class="stat-label">Firebase</div>
+        <div id="sync-badge" style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted)">Connecting…</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Initial Stock</div>
+        <div class="stat-val" id="display-init-stock">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Final Stock (W53)</div>
+        <div class="stat-val" id="display-final-stock">—</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <label class="text-label" for="initial-stock">Starting Stock:</label>
+    <input type="number" id="initial-stock" placeholder="e.g. 1000" value="0">
+    <button class="btn btn-primary" onclick="recalcAll()">Apply</button>
+    <button class="btn btn-ghost" onclick="clearAll()">Clear All</button>
+    <button class="btn btn-ghost" onclick="restoreAll()" id="btn-restore" style="display:none">↩ Restore Rows</button>
+    <div class="divider"></div>
+    <label class="btn-import" title="Import an Excel file">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Import Excel
+      <input type="file" id="import-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="importFromExcel(event)">
+    </label>
+    <button class="btn btn-excel" onclick="exportToExcel()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export Excel
+    </button>
+  </div>
+
+  <div class="formula-hint">
+    STOCK[n] = STOCK[n-1] − Requirements[n] + Bunge[n] + Cargill[n] + ADM[n] + ADM+[n]
+  </div>
+
+  <!-- Warning banner -->
+  <div id="warning-banner">
+    <div class="warn-banner-inner">
+      <div class="warn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <span class="warn-title-text">⚠ Low Stock Alert:</span>
+      <div class="warn-chips" id="warn-chips"></div>
+      <button class="warn-dismiss" onclick="document.getElementById('warning-banner').style.display='none'" title="Dismiss">✕</button>
+    </div>
+  </div>
+
+  <div class="body-area">
+
+    <!-- Main table -->
+    <div class="table-wrap">
+      <table id="tracker-table">
+        <thead>
+          <tr>
+            <th class="col-week">Week</th>
+            <th class="col-req">Requirements</th>
+            <th class="col-perday">Per Day</th>
+            <th class="col-bunge">Bunge <span class="col-sum" id="sum-bunge"></span></th>
+            <th class="col-cargill">Cargill <span class="col-sum" id="sum-cargill"></span></th>
+            <th class="col-adm">ADM <span class="col-sum" id="sum-adm"></span></th>
+            <th class="col-admp">ADM+ <span class="col-sum" id="sum-admp"></span></th>
+            <th class="col-stock">Stock</th>
+            <th class="col-total">Total In</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Combined Monthly Summary + Target sidebar -->
+    <div class="combined-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-col-title">Monthly Summary</div>
+        <div class="sidebar-col-title">Target</div>
+        <div class="sidebar-col-title">Averages</div>
+      </div>
+      <div id="combined-rows"></div>
+    </div>
+
+  </div>
+
+  <footer>© 2025 Stock Tracker · Auto-calculated · 52 Weeks</footer>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+  // ── FIREBASE ──────────────────────────────────────────────────────────────
+  import { initializeApp, getApps }
+    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getDatabase, ref as fref, set, get }
+    from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+  const firebaseConfig = {
+    databaseURL: "https://leads-trucker-app-default-rtdb.europe-west1.firebasedatabase.app/"
+  };
+  const fbApp = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const db    = getDatabase(fbApp);
+  const ROOT  = "stockTracker2026";
+
+  let _syncTimer;
+  function syncBadge(state) { // 'saving' | 'saved' | 'error'
+    const el = document.getElementById('sync-badge');
+    if (!el) return;
+    const map = { saving: ['⟳ Saving…','#a0b4c8'], saved: ['✓ Synced','#3fb950'], error: ['✗ Error','#f85149'] };
+    [el.textContent, el.style.color] = map[state];
+  }
+
+  function debounce(fn, ms = 700) {
+    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  }
+
+  function fbSave(path, value) {
+    syncBadge('saving');
+    return set(fref(db, `${ROOT}/${path}`), value ?? null)
+      .then(() => { clearTimeout(_syncTimer); syncBadge('saved'); })
+      .catch(() => syncBadge('error'));
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  const WEEKS = 53;
+  const tbody = document.getElementById('table-body');
+
+  // Week → month mapping (ISO week approximate)
+  const WEEK_MONTH = {
+     1:1,  2:1,  3:1,  4:1,
+     5:2,  6:2,  7:2,  8:2,  9:2,
+    10:3, 11:3, 12:3, 13:3,
+    14:4, 15:4, 16:4, 17:4, 18:4,
+    19:5, 20:5, 21:5, 22:5,
+    23:6, 24:6, 25:6, 26:6,
+    27:7, 28:7, 29:7, 30:7, 31:7,
+    32:8, 33:8, 34:8, 35:8,
+    36:9, 37:9, 38:9, 39:9,
+    40:10,41:10,42:10,43:10,44:10,
+    45:11,46:11,47:11,48:11,
+    49:12,50:12,51:12,52:12,53:12
+  };
+
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Pre-compute week ranges per month for display
+  const MONTH_WEEKS = {};
+  for (let w = 1; w <= 53; w++) {
+    const m = WEEK_MONTH[w];
+    if (!MONTH_WEEKS[m]) MONTH_WEEKS[m] = [];
+    MONTH_WEEKS[m].push(w);
+  }
+
+  // Build combined month rows (Summary + Target side by side)
+  const combinedRowsEl = document.getElementById('combined-rows');
+  for (let m = 1; m <= 12; m++) {
+    const wks = MONTH_WEEKS[m];
+    const wkLabel = `W${String(wks[0]).padStart(2,'0')}–W${String(wks[wks.length-1]).padStart(2,'0')}`;
+    const row = document.createElement('div');
+    row.className = 'combined-month-row';
+    row.id = `month-row-${m}`;
+    row.innerHTML = `
+      <div class="combined-cell summary">
+        <div class="cell-month-name">
+          ${MONTH_NAMES[m-1]}
+          <span class="cell-month-weeks">${wkLabel}</span>
+        </div>
+        <div class="cell-rows">
+          <div class="cell-row">
+            <span class="cell-row-label" style="color:var(--accent)">Req</span>
+            <span class="month-row-val zero" id="m${m}-req">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label bunge">Bunge</span>
+            <span class="month-row-val zero" id="m${m}-bunge">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label cargill">Cargill</span>
+            <span class="month-row-val zero" id="m${m}-cargill">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label adm">ADM</span>
+            <span class="month-row-val zero" id="m${m}-adm">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="combined-cell target">
+        <div class="cell-month-name" style="visibility:hidden">
+          ${MONTH_NAMES[m-1]}
+          <span class="cell-month-weeks">${wkLabel}</span>
+        </div>
+        <div class="cell-rows">
+          <div class="cell-row">
+            <span class="cell-row-label bunge">Bunge</span>
+            <input type="number" class="target-input bunge-t" id="t${m}-bunge" placeholder="0" step="any">
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label cargill">Cargill</span>
+            <input type="number" class="target-input cargill-t" id="t${m}-cargill" placeholder="0" step="any">
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label adm">ADM</span>
+            <input type="number" class="target-input adm-t" id="t${m}-adm" placeholder="0" step="any">
+          </div>
+        </div>
+      </div>
+      <div class="combined-cell averages">
+        <div class="cell-month-name" style="visibility:hidden">
+          ${MONTH_NAMES[m-1]}
+          <span class="cell-month-weeks">${wkLabel}</span>
+        </div>
+        <div class="cell-rows">
+          <div class="cell-row">
+            <span class="avg-label" style="color:var(--accent)">Req</span>
+            <span class="avg-req-val zero" id="avg${m}-req">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="avg-label" style="color:var(--bunge)">Bunge</span>
+            <span class="avg-val zero" id="avg${m}-bunge">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="avg-label" style="color:var(--cargill)">Cargill</span>
+            <span class="avg-val zero" id="avg${m}-cargill">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="avg-label" style="color:var(--adm)">ADM</span>
+            <span class="avg-val zero" id="avg${m}-adm">—</span>
+          </div>
+        </div>
+      </div>`;
+    combinedRowsEl.appendChild(row);
+  }
+
+  // Month tint colors matching CSS
+  const MONTH_COLORS = {
+    1:'rgba(240,165,0,0.7)', 2:'rgba(88,166,255,0.7)', 3:'rgba(63,185,80,0.7)',
+    4:'rgba(188,140,255,0.7)', 5:'rgba(224,123,84,0.8)', 6:'rgba(86,211,200,0.7)',
+    7:'rgba(248,81,73,0.7)', 8:'rgba(240,165,0,0.9)', 9:'rgba(88,166,255,0.9)',
+    10:'rgba(63,185,80,0.9)', 11:'rgba(188,140,255,0.9)', 12:'rgba(224,123,84,1)'
+  };
+
+  // Build table rows
+  for (let w = 1; w <= WEEKS; w++) {
+    const m = WEEK_MONTH[w];
+    const tr = document.createElement('tr');
+    tr.dataset.week = w;
+    tr.classList.add(`month-${m}`);
+
+    // Week cell with colored dot
+    const tdWeek = document.createElement('td');
+    tdWeek.innerHTML = `<span class="week-label"><span class="week-month-dot" style="background:${MONTH_COLORS[m]}"></span>W${String(w).padStart(2,'0')}</span>`;
+    tr.appendChild(tdWeek);
+
+    // Requirements input
+    const tdReq = document.createElement('td');
+    const reqInput = document.createElement('input');
+    reqInput.type = 'number';
+    reqInput.className = 'cell-input req-input';
+    reqInput.placeholder = '0';
+    reqInput.setAttribute('step', 'any');
+    reqInput.addEventListener('input', recalcAll);
+    tdReq.appendChild(reqInput);
+    tr.appendChild(tdReq);
+
+    // Per Day cell (calculated, read-only)
+    const tdPerDay = document.createElement('td');
+    tdPerDay.innerHTML = `<div class="perday-cell" id="perday-${w}">—</div>`;
+    tr.appendChild(tdPerDay);
+
+    // Bunge, Cargill, ADM inputs
+    ['bunge','cargill','adm','admp'].forEach(col => {
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = `cell-input ${col}-input`;
+      input.placeholder = '0';
+      input.setAttribute('step', 'any');
+      input.addEventListener('input', recalcAll);
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    const tdStock = document.createElement('td');
+    tdStock.innerHTML = `<div class="stock-cell zero"><div class="stock-inner"><span class="dot zero"></span><span>0</span></div></div>`;
+    tr.appendChild(tdStock);
+
+    // Total In cell (Bunge + Cargill + ADM + ADM+)
+    const tdTotal = document.createElement('td');
+    tdTotal.innerHTML = `<div class="total-cell zero" id="total-${w}">—</div>`;
+    tr.appendChild(tdTotal);
+
+    const tdDel = document.createElement('td');
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-del';
+    delBtn.title = 'Remove this week';
+    delBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    delBtn.addEventListener('click', () => deleteRow(tr));
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('initial-stock').addEventListener('input', recalcAll);
+
+  function getVal(input) { return parseFloat(input.value) || 0; }
+
+  function fmt(n) {
+    if (n === 0) return '0';
+    return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function deleteRow(tr) {
+    tr.classList.add('row-hidden');
+    recalcAll();
+    document.getElementById('btn-restore').style.display = tbody.querySelector('tr.row-hidden') ? '' : 'none';
+  }
+
+  function restoreAll() {
+    tbody.querySelectorAll('tr.row-hidden').forEach(tr => tr.classList.remove('row-hidden'));
+    document.getElementById('btn-restore').style.display = 'none';
+    recalcAll();
+  }
+
+  function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+    t.style.color = isError ? 'var(--red)' : 'var(--green)';
+    t.style.display = 'block'; t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 3000);
+  }
+
+  function recalcAll() {
+    let stock = parseFloat(document.getElementById('initial-stock').value) || 0;
+    document.getElementById('display-init-stock').textContent = fmt(stock);
+
+    let sumBunge = 0, sumCargill = 0, sumAdm = 0, sumAdmp = 0;
+
+    // Monthly accumulators
+    const monthly = {};
+    for (let m = 1; m <= 12; m++) monthly[m] = {
+      bunge: 0, cargill: 0, adm: 0, admp: 0, reqSum: 0,
+      req: 0, reqCount: 0, bungeCount: 0, cargillCount: 0, admCount: 0, admpCount: 0
+    };
+
+    const visibleRows = Array.from(tbody.querySelectorAll('tr:not(.row-hidden)'));
+    const warnings = [];
+    let stockBeforeWeek = stock; // stock ENTERING this week (before any calc)
+
+    visibleRows.forEach(tr => {
+      const w       = parseInt(tr.dataset.week);
+      const reqRaw  = tr.querySelector('.req-input').value.trim();
+      const bungeRaw   = tr.querySelector('.bunge-input').value.trim();
+      const cargillRaw = tr.querySelector('.cargill-input').value.trim();
+      const admRaw     = tr.querySelector('.adm-input').value.trim();
+      const admpRaw    = tr.querySelector('.admp-input').value.trim();
+
+      const req     = parseFloat(reqRaw)     || 0;
+      const bunge   = parseFloat(bungeRaw)   || 0;
+      const cargill = parseFloat(cargillRaw) || 0;
+      const adm     = parseFloat(admRaw)     || 0;
+      const admp    = parseFloat(admpRaw)    || 0;
+
+      // Per-day calculation
+      const perDayEl = document.getElementById(`perday-${w}`);
+      const perDay = req / 7;
+      if (perDayEl) {
+        perDayEl.textContent = req > 0 ? fmt(perDay) : '—';
+      }
+
+      // Warning: stock going into this week is less than 2× daily usage
+      // Only fires when Requirements is filled and stock is positive
+      if (reqRaw !== '' && req > 0 && stockBeforeWeek > 0 && stockBeforeWeek < (2 * perDay)) {
+        warnings.push({ week: w, twoXPerDay: 2 * perDay, stock: stockBeforeWeek });
+      }
+
+      sumBunge   += bunge;
+      sumCargill += cargill;
+      sumAdm     += adm;
+      sumAdmp    += admp;
+
+      const m = WEEK_MONTH[w];
+      monthly[m].bunge   += bunge;
+      monthly[m].cargill += cargill;
+      monthly[m].adm     += adm + admp;   // ADM and ADM+ combined as one supplier
+      if (req    > 0) { monthly[m].req    += req;    monthly[m].reqCount++;  monthly[m].reqSum += req; }
+      if (bunge  > 0) { monthly[m].bungeCount++;  }
+      if (cargill> 0) { monthly[m].cargillCount++; }
+      if (adm + admp > 0) { monthly[m].admCount++; }
+
+      // Total In cell (all suppliers combined)
+      const totalIn = bunge + cargill + adm + admp;
+      const totalEl = document.getElementById(`total-${w}`);
+      if (totalEl) {
+        if (totalIn > 0) { totalEl.textContent = fmt(totalIn); totalEl.className = 'total-cell'; }
+        else             { totalEl.textContent = '—';          totalEl.className = 'total-cell zero'; }
+      }
+
+      stock = stock - req + bunge + cargill + adm + admp;
+      stockBeforeWeek = stock; // stock entering NEXT week
+
+      const cls = stock > 0 ? 'pos' : stock < 0 ? 'neg' : 'zero';
+      const cell = tr.querySelector('.stock-cell');
+      cell.className = `stock-cell ${cls}`;
+      cell.innerHTML = `<div class="stock-inner"><span class="dot ${cls}"></span><span>${fmt(stock)}</span></div>`;
+    });
+
+    // Update final stock header
+    const finalEl = document.getElementById('display-final-stock');
+    if (visibleRows.length === 0) {
+      finalEl.textContent = '—'; finalEl.className = 'stat-val';
+    } else {
+      finalEl.textContent = fmt(stock);
+      finalEl.className = `stat-val ${stock > 0 ? 'pos' : stock < 0 ? 'neg' : ''}`;
+    }
+
+    // Update column totals
+    const updateColSum = (id, val) => {
+      const el = document.getElementById(id);
+      if (val !== 0) { el.textContent = fmt(val); el.classList.add('visible'); }
+      else           { el.textContent = ''; el.classList.remove('visible'); }
+    };
+    updateColSum('sum-bunge',   sumBunge);
+    updateColSum('sum-cargill', sumCargill);
+    updateColSum('sum-adm',     sumAdm);
+    updateColSum('sum-admp',    sumAdmp);
+
+    // Update monthly sidebar
+    for (let m = 1; m <= 12; m++) {
+      const setVal = (elId, val) => {
+        const el = document.getElementById(elId);
+        if (val !== 0) { el.textContent = fmt(val); el.className = 'month-row-val'; }
+        else           { el.textContent = '—';      el.className = 'month-row-val zero'; }
+      };
+      setVal(`m${m}-req`,     monthly[m].reqSum);
+      setVal(`m${m}-bunge`,   monthly[m].bunge);
+      setVal(`m${m}-cargill`, monthly[m].cargill);
+      setVal(`m${m}-adm`,     monthly[m].adm);   // combined ADM + ADM+
+
+      // Averages
+      const setAvg = (elId, sum, count, isReq) => {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        if (count > 0) {
+          el.textContent = fmt(sum / count);
+          el.className = isReq ? 'avg-req-val' : 'avg-val';
+        } else {
+          el.textContent = '—';
+          el.className = isReq ? 'avg-req-val zero' : 'avg-val zero';
+        }
+      };
+      setAvg(`avg${m}-req`,     monthly[m].req,    monthly[m].reqCount,     true);
+      setAvg(`avg${m}-bunge`,   monthly[m].bunge,  monthly[m].bungeCount,   false);
+      setAvg(`avg${m}-cargill`, monthly[m].cargill,monthly[m].cargillCount, false);
+      setAvg(`avg${m}-adm`,     monthly[m].adm,    monthly[m].admCount,     false);
+    }
+
+    // Render warnings banner
+
+    const banner = document.getElementById('warning-banner');
+    const chips  = document.getElementById('warn-chips');
+    if (warnings.length > 0) {
+      chips.innerHTML = warnings.map(w =>
+        `<span class="warn-chip">W${String(w.week).padStart(2,'0')} — stock <strong>${fmt(w.stock)}</strong> &lt; 2×daily <strong>${fmt(w.twoXPerDay)}</strong></span>`
+      ).join('');
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Re-align sidebar heights after any data change
+    setTimeout(alignSidebar, 0);
+  }
+
+  function clearAll() {
+    document.getElementById('initial-stock').value = 0;
+    document.querySelectorAll('.cell-input').forEach(i => i.value = '');
+    recalcAll();
+  }
+
+  function importFromExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = '';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        let headerIdx = -1, colMap = {};
+        for (let i = 0; i < raw.length; i++) {
+          const row = raw[i].map(c => String(c).trim().toLowerCase());
+          if (row.includes('week')) {
+            headerIdx = i;
+            colMap.week    = row.indexOf('week');
+            colMap.req     = row.findIndex(c => c.includes('req'));
+            colMap.bunge   = row.findIndex(c => c.includes('bunge'));
+            colMap.cargill = row.findIndex(c => c.includes('cargill'));
+            colMap.adm     = row.findIndex(c => c === 'adm');
+            colMap.admp    = row.findIndex(c => c.includes('adm+') || c === 'admp');
+            for (let j = 0; j < i; j++) {
+              const cell = String(raw[j][0] || '').toLowerCase();
+              if (cell.includes('initial stock') || cell.includes('starting stock')) {
+                const val = parseFloat(raw[j][1]);
+                if (!isNaN(val)) document.getElementById('initial-stock').value = val;
+              }
+            }
+            break;
+          }
+        }
+
+        if (headerIdx === -1) { showToast('❌ Could not find a "Week" column.', true); return; }
+
+        tbody.querySelectorAll('tr').forEach(tr => {
+          tr.classList.remove('row-hidden');
+          tr.querySelectorAll('.cell-input').forEach(inp => inp.value = '');
+        });
+        document.getElementById('btn-restore').style.display = 'none';
+
+        let filled = 0;
+        for (let i = headerIdx + 1; i < raw.length; i++) {
+          const row = raw[i];
+          if (!row || row.every(c => c === '')) continue;
+          const weekNum = parseInt(String(row[colMap.week] || '').replace(/[^\d]/g, ''));
+          if (!weekNum || weekNum < 1 || weekNum > 52) continue;
+          const tr = tbody.querySelector(`tr[data-week="${weekNum}"]`);
+          if (!tr) continue;
+          const set = (cls, idx) => {
+            if (idx !== -1 && idx < row.length) {
+              const v = parseFloat(row[idx]);
+              if (!isNaN(v) && v !== 0) tr.querySelector(`.${cls}-input`).value = v;
+            }
+          };
+          set('req', colMap.req); set('bunge', colMap.bunge);
+          set('cargill', colMap.cargill); set('adm', colMap.adm);
+          set('admp', colMap.admp);
+          filled++;
+        }
+        recalcAll();
+        showToast(`✓ Imported ${filled} week${filled !== 1 ? 's' : ''} from ${file.name}`, false);
+      } catch(err) { showToast('❌ Failed to read file: ' + err.message, true); }
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  function exportToExcel() {
+    const wb = XLSX.utils.book_new();
+    const initStock = parseFloat(document.getElementById('initial-stock').value) || 0;
+
+    // ── Sheet 1: Weekly data ──
+    const weekRows = [
+      ['Weekly Stock Tracker'],
+      [`Initial Stock: ${initStock}`],
+      [],
+      ['Week', 'Requirements', 'Per Day', 'Bunge', 'Cargill', 'ADM', 'ADM+', 'Total In', 'Stock']
+    ];
+    let stock = initStock;
+    tbody.querySelectorAll('tr:not(.row-hidden)').forEach(tr => {
+      const week    = tr.dataset.week;
+      const req     = getVal(tr.querySelector('.req-input'));
+      const bunge   = getVal(tr.querySelector('.bunge-input'));
+      const cargill = getVal(tr.querySelector('.cargill-input'));
+      const adm     = getVal(tr.querySelector('.adm-input'));
+      const admp    = getVal(tr.querySelector('.admp-input'));
+      const perDay  = req > 0 ? Math.round((req / 7) * 100) / 100 : '';
+      const totalIn = (bunge||0) + (cargill||0) + (adm||0) + (admp||0);
+      stock = stock - req + bunge + cargill + adm + admp;
+      weekRows.push([`W${String(week).padStart(2,'0')}`, req||'', perDay, bunge||'', cargill||'', adm||'', admp||'', totalIn||'', stock]);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(weekRows);
+    ws1['!cols'] = [{wch:8},{wch:14},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Weekly Data');
+
+    // ── Sheet 2: Monthly summary + target + averages ──
+    const monthRows = [
+      ['Month', 'Weeks',
+       'Summary – Bunge', 'Summary – Cargill', 'Summary – ADM (combined)',
+       'Target – Bunge',  'Target – Cargill',  'Target – ADM',
+       'Avg – Req',       'Avg – Bunge',        'Avg – Cargill',  'Avg – ADM (combined)']
+    ];
+
+    for (let m = 1; m <= 12; m++) {
+      const wks = MONTH_WEEKS[m];
+      const wkLabel = `W${String(wks[0]).padStart(2,'0')}–W${String(wks[wks.length-1]).padStart(2,'0')}`;
+
+      const getNum = id => {
+        const el = document.getElementById(id);
+        if (!el) return '';
+        const v = parseFloat(el.textContent.replace(/,/g,''));
+        return isNaN(v) ? '' : v;
+      };
+      const getInput = id => {
+        const el = document.getElementById(id);
+        return el ? (parseFloat(el.value) || '') : '';
+      };
+
+      monthRows.push([
+        MONTH_NAMES[m-1], wkLabel,
+        getNum(`m${m}-bunge`),
+        getNum(`m${m}-cargill`),
+        getNum(`m${m}-adm`),
+        getInput(`t${m}-bunge`),
+        getInput(`t${m}-cargill`),
+        getInput(`t${m}-adm`),
+        getNum(`avg${m}-req`),
+        getNum(`avg${m}-bunge`),
+        getNum(`avg${m}-cargill`),
+        getNum(`avg${m}-adm`),
+      ]);
+    }
+
+    const ws2 = XLSX.utils.aoa_to_sheet(monthRows);
+    ws2['!cols'] = [
+      {wch:8},{wch:12},
+      {wch:16},{wch:16},{wch:16},{wch:16},
+      {wch:14},{wch:14},{wch:14},{wch:14},
+      {wch:12},{wch:12},{wch:14},{wch:12},{wch:12}
+    ];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Monthly Overview');
+
+    XLSX.writeFile(wb, 'stock-tracker.xlsx');
+  }
+
+  // (recalcAll is called after Firebase load below)
+ {
+    for (let m = 1; m <= 12; m++) {
+      const weeks = MONTH_WEEKS[m];
+      let firstTr = null, lastTr = null;
+      weeks.forEach(w => {
+        const tr = tbody.querySelector(`tr[data-week="${w}"]`);
+        if (tr && !tr.classList.contains('row-hidden')) {
+          if (!firstTr) firstTr = tr;
+          lastTr = tr;
+        }
+      });
+      const card = document.getElementById(`month-row-${m}`);
+      if (!card) continue;
+      if (firstTr && lastTr) {
+        const top = firstTr.getBoundingClientRect().top;
+        const bottom = lastTr.getBoundingClientRect().bottom;
+        card.style.height = (bottom - top) + 'px';
+        card.style.overflow = 'hidden';
+      } else {
+        card.style.height = '0px';
+        card.style.overflow = 'hidden';
+      }
+    }
+  }
+
+  // ── FIREBASE SAVE HELPERS ─────────────────────────────────────────────────
+
+  function saveHiddenWeeks() {
+    const hidden = {};
+    tbody.querySelectorAll('tr.row-hidden').forEach(r => { hidden[r.dataset.week] = true; });
+    fbSave('hiddenWeeks', Object.keys(hidden).length ? hidden : null);
+  }
+
+  // Patch deleteRow to persist
+  const _origDeleteRow = deleteRow;
+  deleteRow = function(tr) {
+    _origDeleteRow(tr);
+    saveHiddenWeeks();
+  };
+
+  // Patch restoreAll to persist
+  const _origRestoreAll = restoreAll;
+  restoreAll = function() {
+    _origRestoreAll();
+    fbSave('hiddenWeeks', null);
+  };
+
+  // Debounced save for initial stock
+  document.getElementById('initial-stock').addEventListener('input', debounce(e => {
+    fbSave('initialStock', parseFloat(e.target.value) || 0);
+  }));
+
+  // Wire every week input
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const w = tr.dataset.week;
+    ['req','bunge','cargill','adm','admp'].forEach(col => {
+      const inp = tr.querySelector(`.${col}-input`);
+      if (!inp) return;
+      inp.addEventListener('input', debounce(() => {
+        const v = inp.value.trim();
+        fbSave(`weeks/w${w}/${col}`, v !== '' ? parseFloat(v) : null);
+      }));
+    });
+  });
+
+  // Wire target sidebar inputs
+  for (let m = 1; m <= 12; m++) {
+    ['bunge','cargill','adm'].forEach(col => {
+      const inp = document.getElementById(`t${m}-${col}`);
+      if (!inp) return;
+      inp.addEventListener('input', debounce(() => {
+        const v = inp.value.trim();
+        fbSave(`targets/m${m}/${col}`, v !== '' ? parseFloat(v) : null);
+      }));
+    });
+  }
+
+  // ── FIREBASE LOAD ON STARTUP ──────────────────────────────────────────────
+  get(fref(db, ROOT)).then(snap => {
+    if (snap.exists()) {
+      const data = snap.val();
+
+      // Initial stock
+      if (data.initialStock !== undefined) {
+        document.getElementById('initial-stock').value = data.initialStock;
+      }
+
+      // Week inputs
+      if (data.weeks) {
+        Object.entries(data.weeks).forEach(([wKey, cols]) => {
+          const w = wKey.replace('w','');
+          const tr = tbody.querySelector(`tr[data-week="${w}"]`);
+          if (!tr) return;
+          ['req','bunge','cargill','adm','admp'].forEach(col => {
+            if (cols[col] !== null && cols[col] !== undefined) {
+              const inp = tr.querySelector(`.${col}-input`);
+              if (inp) inp.value = cols[col];
+            }
+          });
+        });
+      }
+
+      // Target inputs
+      if (data.targets) {
+        Object.entries(data.targets).forEach(([mKey, cols]) => {
+          const m = mKey.replace('m','');
+          ['bunge','cargill','adm'].forEach(col => {
+            if (cols[col] !== null && cols[col] !== undefined) {
+              const inp = document.getElementById(`t${m}-${col}`);
+              if (inp) inp.value = cols[col];
+            }
+          });
+        });
+      }
+
+      // Hidden weeks
+      if (data.hiddenWeeks) {
+        Object.keys(data.hiddenWeeks).forEach(w => {
+          const tr = tbody.querySelector(`tr[data-week="${w}"]`);
+          if (tr) tr.classList.add('row-hidden');
+        });
+        document.getElementById('btn-restore').style.display = '';
+      }
+    }
+
+    syncBadge('saved');
+    recalcAll();
+    setTimeout(alignSidebar, 120);
+  }).catch(() => {
+    syncBadge('error');
+    recalcAll();
+    setTimeout(alignSidebar, 120);
+  });
+
+  window.addEventListener('resize', alignSidebar);
+</script>
+</body>
+</html>
