@@ -1008,15 +1008,15 @@
           if (!weekNum || weekNum < 1 || weekNum > 52) continue;
           const tr = tbody.querySelector(`tr[data-week="${weekNum}"]`);
           if (!tr) continue;
-          const set = (cls, idx) => {
+          const setCell = (cls, idx) => {
             if (idx !== -1 && idx < row.length) {
               const v = parseFloat(row[idx]);
               if (!isNaN(v) && v !== 0) tr.querySelector(`.${cls}-input`).value = v;
             }
           };
-          set('req', colMap.req); set('bunge', colMap.bunge);
-          set('cargill', colMap.cargill); set('adm', colMap.adm);
-          set('admp', colMap.admp);
+          setCell('req', colMap.req); setCell('bunge', colMap.bunge);
+          setCell('cargill', colMap.cargill); setCell('adm', colMap.adm);
+          setCell('admp', colMap.admp);
           filled++;
         }
         recalcAll();
@@ -1105,7 +1105,8 @@
   }
 
   // (recalcAll is called after Firebase load below)
- {
+
+  function alignSidebar() {
     for (let m = 1; m <= 12; m++) {
       const weeks = MONTH_WEEKS[m];
       let firstTr = null, lastTr = null;
@@ -1222,6 +1223,12 @@
   });
 
   window.addEventListener('resize', alignSidebar);
+
+  // Expose functions used by inline onclick handlers (required for ES modules)
+  window.recalcAll   = recalcAll;
+  window.clearAll    = clearAll;
+  window.restoreAll  = restoreAll;
+  window.exportToExcel = exportToExcel;
 </script>
 </body>
 </html>
