@@ -39,7 +39,7 @@
 
   .app-shell {
     width: 100%;
-    max-width: 1400px;
+    max-width: 1800px;
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -140,13 +140,14 @@
     display: flex;
     background: var(--bg);
     align-items: flex-start;
+    overflow-x: auto;
   }
 
   /* ── TABLE ── */
   .table-wrap {
-    flex: 1;
+    flex-shrink: 0;
+    min-width: 640px;
     padding: 12px 20px 24px;
-    overflow-x: auto;
     border-right: 1px solid var(--border);
   }
 
@@ -262,7 +263,7 @@
 
   /* ── COMBINED SIDEBAR ── */
   .combined-sidebar {
-    width: 620px;
+    width: 820px;
     flex-shrink: 0;
     background: var(--bg);
     border-left: 1px solid var(--border);
@@ -273,7 +274,7 @@
 
   .sidebar-header {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     border-bottom: 2px solid var(--border);
     flex-shrink: 0;
     background: var(--bg);
@@ -292,7 +293,7 @@
 
   .combined-month-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     border-bottom: 1px solid rgba(48,54,61,0.35);
     box-sizing: border-box;
     overflow: hidden;
@@ -308,8 +309,9 @@
     overflow: hidden;
   }
 
-  .combined-cell.summary { border-right: 1px solid rgba(48,54,61,0.35); }
-  .combined-cell.target  { border-right: 1px solid rgba(48,54,61,0.35); }
+  .combined-cell.summary   { border-right: 1px solid rgba(48,54,61,0.35); }
+  .combined-cell.target    { border-right: 1px solid rgba(48,54,61,0.35); }
+  .combined-cell.contracts { border-right: 1px solid rgba(48,54,61,0.35); }
 
   .avg-label {
     font-size: 10px; font-weight: 600;
@@ -328,6 +330,14 @@
     font-weight: 600; color: var(--accent);
   }
   .avg-req-val.zero { color: var(--text-muted); font-weight: 400; }
+
+  .contract-val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-weight: 600;
+  }
+  .contract-val.pos  { color: var(--green); }
+  .contract-val.neg  { color: var(--red); }
+  .contract-val.zero { color: var(--text-muted); font-weight: 400; }
 
   .cell-month-name {
     font-size: 11px; font-weight: 700; color: var(--text);
@@ -550,6 +560,7 @@
       <div class="sidebar-header">
         <div class="sidebar-col-title">Monthly Summary</div>
         <div class="sidebar-col-title">Target</div>
+        <div class="sidebar-col-title">Contracts Left</div>
         <div class="sidebar-col-title">Averages</div>
       </div>
       <div id="combined-rows"></div>
@@ -674,6 +685,26 @@
           <div class="cell-row">
             <span class="cell-row-label adm">ADM</span>
             <input type="number" class="target-input adm-t" id="t${m}-adm" placeholder="0" step="any">
+          </div>
+        </div>
+      </div>
+      <div class="combined-cell contracts">
+        <div class="cell-month-name" style="visibility:hidden">
+          ${MONTH_NAMES[m-1]}
+          <span class="cell-month-weeks">${wkLabel}</span>
+        </div>
+        <div class="cell-rows">
+          <div class="cell-row">
+            <span class="cell-row-label bunge">Bunge</span>
+            <span class="contract-val zero" id="cl${m}-bunge">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label cargill">Cargill</span>
+            <span class="contract-val zero" id="cl${m}-cargill">—</span>
+          </div>
+          <div class="cell-row">
+            <span class="cell-row-label adm">ADM</span>
+            <span class="contract-val zero" id="cl${m}-adm">—</span>
           </div>
         </div>
       </div>
@@ -918,6 +949,23 @@
       setVal(`m${m}-cargill`, monthly[m].cargill);
       setVal(`m${m}-adm`,     monthly[m].adm);   // combined ADM + ADM+
 
+      // Contracts Left = Target − Monthly Summary (per supplier)
+      const setContract = (elId, summaryVal, targetId) => {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const targetEl = document.getElementById(targetId);
+        const target = targetEl ? (parseFloat(targetEl.value) || 0) : 0;
+        if (target === 0 && summaryVal === 0) {
+          el.textContent = '—'; el.className = 'contract-val zero'; return;
+        }
+        const left = target - summaryVal;
+        el.textContent = (left > 0 ? '+' : '') + fmt(left);
+        el.className = `contract-val ${left > 0 ? 'pos' : left < 0 ? 'neg' : 'zero'}`;
+      };
+      setContract(`cl${m}-bunge`,   monthly[m].bunge,   `t${m}-bunge`);
+      setContract(`cl${m}-cargill`, monthly[m].cargill, `t${m}-cargill`);
+      setContract(`cl${m}-adm`,     monthly[m].adm,     `t${m}-adm`);
+
       // Averages
       const setAvg = (elId, sum, count, isReq) => {
         const el = document.getElementById(elId);
@@ -1158,6 +1206,7 @@
     ['bunge','cargill','adm'].forEach(col => {
       const inp = document.getElementById(`t${m}-${col}`);
       if (!inp) return;
+      inp.addEventListener('input', () => recalcAll()); // update Contracts Left live
       inp.addEventListener('input', debounce(() => {
         const v = inp.value.trim();
         fbSave(`targets/m${m}/${col}`, v !== '' ? parseFloat(v) : null);
