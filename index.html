@@ -169,6 +169,7 @@
   th.col-admp    { color: var(--admp);    width: 80px; }
   th.col-stock   { color: var(--green);   width: 90px; }
   th.col-total   { color: #a0c4a0;        width: 90px; }
+  th.col-perhr   { color: #a0b4c8;        width: 90px; }
   th.col-del     { width: 28px; }
 
   /* Month row tints — subtle, alternating */
@@ -239,6 +240,12 @@
     font-weight: 600; color: #a0c4a0; text-align: right; white-space: nowrap;
   }
   .total-cell.zero { color: var(--text-muted); font-weight: 400; }
+
+  .perhr-cell {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: #a0b4c8; text-align: right; padding-right: 2px;
+  }
+  .perhr-cell.zero { color: var(--text-muted); }
 
   .stock-cell { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; }
   .stock-cell.pos  { color: var(--green); }
@@ -397,6 +404,38 @@
   .target-input.admp-t:focus    { border-color: var(--admp);    background: var(--surface); box-shadow: 0 0 0 2px rgba(232,121,160,0.1); }
 
   /* ── FOOTER ── */
+  /* ── CHART ── */
+  .chart-section {
+    padding: 24px 28px 32px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .chart-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-size: 13px; font-weight: 700; color: var(--text);
+    font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .chart-subtitle {
+    font-size: 10px; color: var(--text-muted); font-weight: 400; letter-spacing: 0.5px;
+  }
+  .chart-legend {
+    display: flex; gap: 18px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace;
+  }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .chart-wrap {
+    position: relative; width: 100%; height: 280px;
+  }
+  #stock-chart { width: 100% !important; height: 100% !important; }
+
   footer {
     text-align: center; padding: 10px; color: var(--text-muted);
     font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px;
@@ -471,6 +510,84 @@
     transition: color 0.15s;
   }
   .warn-dismiss:hover { color: var(--text); }
+
+  /* ── CHANGELOG DRAWER ── */
+  #cl-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 300;
+  }
+  #cl-drawer {
+    position: fixed; top: 0; right: -440px; width: 400px; height: 100vh;
+    background: #161b22; border-left: 1px solid var(--border);
+    z-index: 310; display: flex; flex-direction: column;
+    transition: right 0.26s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: -12px 0 40px rgba(0,0,0,0.5);
+  }
+  #cl-drawer.open { right: 0; }
+  .cl-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .cl-head-title {
+    font-family: 'IBM Plex Mono',monospace; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--text);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .cl-head-actions { display: flex; gap: 8px; align-items: center; }
+  .cl-btn-clear {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    font-family: 'IBM Plex Mono',monospace; font-size: 10px; padding: 3px 8px;
+    border-radius: 4px; cursor: pointer; transition: all 0.15s;
+  }
+  .cl-btn-clear:hover { border-color: var(--red); color: var(--red); }
+  .cl-btn-close {
+    background: none; border: none; color: var(--text-muted); font-size: 18px;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: color 0.15s;
+  }
+  .cl-btn-close:hover { color: var(--text); }
+  #cl-entries {
+    flex: 1; overflow-y: auto; padding: 8px 0;
+  }
+  #cl-entries::-webkit-scrollbar { width: 4px; }
+  #cl-entries::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .cl-empty {
+    padding: 56px 24px; text-align: center;
+    color: var(--text-muted); font-family: 'IBM Plex Mono',monospace; font-size: 11px; line-height: 2;
+  }
+  .cl-row {
+    padding: 9px 16px; border-bottom: 1px solid rgba(48,54,61,0.5);
+  }
+  .cl-row:last-child { border-bottom: none; }
+  .cl-row-top {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px;
+  }
+  .cl-label {
+    font-family: 'IBM Plex Mono',monospace; font-size: 11px; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .cl-tag {
+    font-size: 9px; padding: 1px 6px; border-radius: 3px;
+    font-family: 'IBM Plex Mono',monospace; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .cl-tag.req     { background:rgba(240,165,0,0.15);   color:var(--accent); }
+  .cl-tag.bunge   { background:rgba(224,123,84,0.15);  color:var(--bunge); }
+  .cl-tag.cargill { background:rgba(88,166,255,0.15);  color:var(--cargill); }
+  .cl-tag.adm     { background:rgba(188,140,255,0.15); color:var(--adm); }
+  .cl-tag.admp    { background:rgba(232,121,160,0.15); color:var(--admp); }
+  .cl-tag.stock   { background:rgba(63,185,80,0.15);   color:var(--green); }
+  .cl-tag.target  { background:rgba(139,148,158,0.12); color:#8b949e; }
+  .cl-tag.system  { background:rgba(48,54,61,0.6);     color:#8b949e; }
+  .cl-time {
+    font-family: 'IBM Plex Mono',monospace; font-size: 10px; color: var(--text-muted);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .cl-vals {
+    font-family: 'IBM Plex Mono',monospace; font-size: 11px; color: var(--text-muted);
+  }
+  .cl-old { text-decoration: line-through; opacity: 0.6; }
+  .cl-new { color: var(--green); font-weight: 600; }
+  .cl-arrow { margin: 0 4px; opacity: 0.4; }
 </style>
 </head>
 <body>
@@ -516,6 +633,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Export Excel
     </button>
+    <button class="btn btn-ghost" onclick="openChangelog()" id="btn-changelog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Change Log
+    </button>
   </div>
 
   <div class="formula-hint">
@@ -548,6 +669,7 @@
             <th class="col-admp">ADM+ <span class="col-sum" id="sum-admp"></span></th>
             <th class="col-stock">Stock</th>
             <th class="col-total">Total In</th>
+            <th class="col-perhr">Per Hr Req</th>
             <th class="col-del"></th>
           </tr>
         </thead>
@@ -568,7 +690,38 @@
 
   </div>
 
+  <!-- Stock Projection Chart -->
+  <div class="chart-section">
+    <div class="chart-header">
+      <div class="chart-title">Stock Projection <span class="chart-subtitle">— weekly ending stock vs. 2× daily threshold</span></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#3fb950"></span>Stock level</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f85149;opacity:0.5"></span>Warning threshold</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#58a6ff;opacity:0.6"></span>Total deliveries</span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="stock-chart"></canvas>
+    </div>
+  </div>
+
   <footer>© 2025 Stock Tracker · Auto-calculated · 52 Weeks</footer>
+</div>
+
+<!-- Changelog overlay + drawer -->
+<div id="cl-overlay" onclick="closeChangelog()"></div>
+<div id="cl-drawer">
+  <div class="cl-head">
+    <div class="cl-head-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Change Log
+    </div>
+    <div class="cl-head-actions">
+      <button class="cl-btn-clear" onclick="clearChangelog()">Clear all</button>
+      <button class="cl-btn-close" onclick="closeChangelog()">✕</button>
+    </div>
+  </div>
+  <div id="cl-entries"></div>
 </div>
 
 <div id="toast"></div>
@@ -577,7 +730,7 @@
   // ── FIREBASE ──────────────────────────────────────────────────────────────
   import { initializeApp, getApps }
     from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-  import { getDatabase, ref as fref, set, get }
+  import { getDatabase, ref as fref, set, get, push, onValue, remove }
     from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
   const firebaseConfig = {
@@ -605,6 +758,105 @@
       .then(() => { clearTimeout(_syncTimer); syncBadge('saved'); })
       .catch(() => syncBadge('error'));
   }
+
+  // ── CHANGELOG ─────────────────────────────────────────────────────────────
+  const CL_REF = fref(db, `${ROOT}/changelog`);
+  const MAX_ENTRIES = 150;
+
+  const FIELD_META = {
+    req:          { label: 'Requirements', tag: 'req' },
+    bunge:        { label: 'Bunge',        tag: 'bunge' },
+    cargill:      { label: 'Cargill',      tag: 'cargill' },
+    adm:          { label: 'ADM',          tag: 'adm' },
+    admp:         { label: 'ADM+',         tag: 'admp' },
+    initialStock: { label: 'Starting Stock', tag: 'stock' },
+    target_bunge: { label: 'Target Bunge',   tag: 'target' },
+    target_cargill:{ label: 'Target Cargill',tag: 'target' },
+    target_adm:   { label: 'Target ADM',     tag: 'target' },
+    hiddenWeeks:  { label: 'Rows hidden',    tag: 'system' },
+  };
+
+  // Track previous values to record old→new
+  const _prevVals = {};
+
+  function logChange(field, newVal, context) {
+    const meta  = FIELD_META[field] || { label: field, tag: 'system' };
+    const oldVal = _prevVals[field + '|' + (context || '')] ?? '';
+    _prevVals[field + '|' + (context || '')] = newVal;
+    if (String(oldVal) === String(newVal)) return; // no actual change
+    push(CL_REF, {
+      ts: Date.now(), field, tag: meta.tag, label: meta.label,
+      context: context || '',
+      oldVal: oldVal !== '' ? String(oldVal) : '',
+      newVal: newVal !== null && newVal !== undefined ? String(newVal) : ''
+    }).catch(() => {});
+    // Trim oldest if over limit
+    get(CL_REF).then(snap => {
+      if (!snap.exists()) return;
+      const keys = Object.keys(snap.val());
+      if (keys.length > MAX_ENTRIES)
+        keys.slice(0, keys.length - MAX_ENTRIES)
+            .forEach(k => remove(fref(db, `${ROOT}/changelog/${k}`)));
+    }).catch(() => {});
+  }
+
+  function openChangelog()  {
+    document.getElementById('cl-drawer').classList.add('open');
+    document.getElementById('cl-overlay').style.display = 'block';
+  }
+  function closeChangelog() {
+    document.getElementById('cl-drawer').classList.remove('open');
+    document.getElementById('cl-overlay').style.display = 'none';
+  }
+  function clearChangelog() {
+    if (!confirm('Delete all change log entries?')) return;
+    remove(CL_REF).catch(() => {});
+  }
+
+  function timeAgo(ts) {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60)  return 'just now';
+    const m = Math.floor(s / 60);
+    if (m < 60)  return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24)  return `${h}h ago`;
+    return new Date(ts).toLocaleDateString('en', { day: 'numeric', month: 'short' });
+  }
+
+  function renderChangelog(data) {
+    const el = document.getElementById('cl-entries');
+    if (!data || !Object.keys(data).length) {
+      el.innerHTML = '<div class="cl-empty">No changes recorded yet.<br>Every edit will appear here<br>in real time.</div>';
+      return;
+    }
+    const rows = Object.values(data).sort((a, b) => b.ts - a.ts);
+    el.innerHTML = rows.map(e => `
+      <div class="cl-row">
+        <div class="cl-row-top">
+          <div class="cl-label">
+            <span class="cl-tag ${e.tag}">${e.label}</span>
+            ${e.context ? `<span>${e.context}</span>` : ''}
+          </div>
+          <span class="cl-time">${timeAgo(e.ts)}</span>
+        </div>
+        <div class="cl-vals">
+          ${e.oldVal !== '' ? `<span class="cl-old">${e.oldVal}</span><span class="cl-arrow">→</span>` : ''}
+          <span class="cl-new">${e.newVal !== '' ? e.newVal : '—'}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  // Live listener — updates in real time for all users
+  onValue(CL_REF, snap => {
+    renderChangelog(snap.exists() ? snap.val() : null);
+    // Pulse the button amber when new entries arrive
+    const btn = document.getElementById('btn-changelog');
+    if (btn) btn.style.color = snap.exists() ? 'var(--accent)' : '';
+  });
+
+  window.openChangelog  = openChangelog;
+  window.closeChangelog = closeChangelog;
+  window.clearChangelog = clearChangelog;
   // ─────────────────────────────────────────────────────────────────────────
   const WEEKS = 53;
   const tbody = document.getElementById('table-body');
@@ -793,6 +1045,11 @@
     tdTotal.innerHTML = `<div class="total-cell zero" id="total-${w}">—</div>`;
     tr.appendChild(tdTotal);
 
+    // Per Hour Req cell (Per Day ÷ 24)
+    const tdPerHr = document.createElement('td');
+    tdPerHr.innerHTML = `<div class="perhr-cell zero" id="perhr-${w}">—</div>`;
+    tr.appendChild(tdPerHr);
+
     const tdDel = document.createElement('td');
     const delBtn = document.createElement('button');
     delBtn.className = 'btn-del';
@@ -821,7 +1078,9 @@
     // Persist hidden weeks to Firebase
     const hidden = {};
     tbody.querySelectorAll('tr.row-hidden').forEach(r => { hidden[r.dataset.week] = true; });
-    fbSave('hiddenWeeks', Object.keys(hidden).length ? hidden : null);
+    const hiddenList = Object.keys(hidden);
+    if (hiddenList.length) logChange('hiddenWeeks', hiddenList.join(', '), 'deleted');
+    fbSave('hiddenWeeks', hiddenList.length ? hidden : null);
   }
 
   function restoreAll() {
@@ -829,6 +1088,7 @@
     document.getElementById('btn-restore').style.display = 'none';
     recalcAll();
     // Clear hidden weeks in Firebase
+    logChange('hiddenWeeks', 'all restored', '');
     fbSave('hiddenWeeks', null);
   }
 
@@ -857,6 +1117,7 @@
 
     const visibleRows = Array.from(tbody.querySelectorAll('tr:not(.row-hidden)'));
     const warnings = [];
+    const chartData = []; // { week, stock, threshold, totalIn }
     let stockBeforeWeek = stock; // stock ENTERING this week (before any calc)
 
     visibleRows.forEach(tr => {
@@ -878,6 +1139,19 @@
       const perDay = req / 7;
       if (perDayEl) {
         perDayEl.textContent = req > 0 ? fmt(perDay) : '—';
+      }
+
+      // Per Hour Req = Per Day ÷ 24
+      const perHrEl = document.getElementById(`perhr-${w}`);
+      if (perHrEl) {
+        if (req > 0) {
+          const perHr = perDay / 24;
+          perHrEl.textContent = perHr.toLocaleString('en', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+          perHrEl.className = 'perhr-cell';
+        } else {
+          perHrEl.textContent = '—';
+          perHrEl.className = 'perhr-cell zero';
+        }
       }
 
       // Warning: stock going into this week is less than 2× daily usage
@@ -910,6 +1184,9 @@
 
       stock = stock - req + bunge + cargill + adm + admp;
       stockBeforeWeek = stock; // stock entering NEXT week
+
+      // Collect chart data point
+      chartData.push({ week: w, stock, threshold: 2 * perDay, totalIn: bunge + cargill + adm + admp });
 
       const cls = stock > 0 ? 'pos' : stock < 0 ? 'neg' : 'zero';
       const cell = tr.querySelector('.stock-cell');
@@ -999,6 +1276,9 @@
 
     // Re-align sidebar heights after any data change
     setTimeout(alignSidebar, 0);
+
+    // Update chart
+    drawChart(chartData);
   }
 
   function clearAll() {
@@ -1154,6 +1434,174 @@
 
   // (recalcAll is called after Firebase load below)
 
+  // ── CHART ────────────────────────────────────────────────────────────────
+  function drawChart(data) {
+    const canvas = document.getElementById('stock-chart');
+    if (!canvas) return;
+    const wrap = canvas.parentElement;
+    canvas.width  = wrap.clientWidth  * devicePixelRatio;
+    canvas.height = wrap.clientHeight * devicePixelRatio;
+    canvas.style.width  = wrap.clientWidth  + 'px';
+    canvas.style.height = wrap.clientHeight + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+
+    if (!data.length) {
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '12px IBM Plex Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Enter data to see stock projection', W / 2, H / 2);
+      return;
+    }
+
+    const PAD = { top: 16, right: 24, bottom: 36, left: 64 };
+    const plotW = W - PAD.left - PAD.right;
+    const plotH = H - PAD.top  - PAD.bottom;
+
+    // Value range
+    const stocks    = data.map(d => d.stock);
+    const totalIns  = data.map(d => d.totalIn);
+    const allVals   = [...stocks, ...totalIns, 0];
+    let minV = Math.min(...allVals);
+    let maxV = Math.max(...allVals);
+    const pad = (maxV - minV) * 0.12 || 100;
+    minV -= pad; maxV += pad;
+    const rangeV = maxV - minV || 1;
+
+    const xOf = i => PAD.left + (i / (data.length - 1 || 1)) * plotW;
+    const yOf = v => PAD.top  + (1 - (v - minV) / rangeV) * plotH;
+
+    // Grid lines + Y labels
+    ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'right';
+    const gridCount = 5;
+    for (let i = 0; i <= gridCount; i++) {
+      const v = minV + (rangeV * i / gridCount);
+      const y = yOf(v);
+      ctx.strokeStyle = 'rgba(48,54,61,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+      ctx.fillText(Math.round(v).toLocaleString(), PAD.left - 6, y + 3.5);
+    }
+
+    // Zero line
+    if (minV < 0 && maxV > 0) {
+      const y0 = yOf(0);
+      ctx.strokeStyle = 'rgba(248,81,73,0.3)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(PAD.left, y0); ctx.lineTo(W - PAD.right, y0); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // X axis labels (every 4 weeks)
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8b949e';
+    data.forEach((d, i) => {
+      if (d.week % 4 === 1 || d.week === data[data.length-1].week) {
+        ctx.fillText(`W${String(d.week).padStart(2,'0')}`, xOf(i), H - PAD.bottom + 14);
+      }
+    });
+
+    // Month labels
+    ctx.fillStyle = 'rgba(139,148,158,0.5)';
+    ctx.font = '9px IBM Plex Mono, monospace';
+    const MONTH_NAMES_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    let lastMonth = -1;
+    data.forEach((d, i) => {
+      const m = WEEK_MONTH[d.week];
+      if (m !== lastMonth) {
+        ctx.fillText(MONTH_NAMES_SHORT[m-1], xOf(i), H - PAD.bottom + 26);
+        lastMonth = m;
+      }
+    });
+
+    // Delivery bars (totalIn) — subtle blue bars at the bottom
+    data.forEach((d, i) => {
+      if (d.totalIn <= 0) return;
+      const x = xOf(i);
+      const barH = Math.min((d.totalIn / rangeV) * plotH, plotH * 0.25);
+      const barW = Math.max(plotW / data.length - 1, 2);
+      ctx.fillStyle = 'rgba(88,166,255,0.18)';
+      ctx.fillRect(x - barW / 2, yOf(0) - barH, barW, barH);
+    });
+
+    // Warning threshold area (shaded red zones where stock < threshold)
+    ctx.fillStyle = 'rgba(248,81,73,0.07)';
+    data.forEach((d, i) => {
+      if (d.threshold <= 0 || d.stock >= d.threshold) return;
+      const x = xOf(i);
+      const barW = plotW / data.length;
+      ctx.fillRect(x - barW / 2, PAD.top, barW, plotH);
+    });
+
+    // Threshold line
+    const thresholdPoints = data.filter(d => d.threshold > 0);
+    if (thresholdPoints.length > 1) {
+      ctx.strokeStyle = 'rgba(248,81,73,0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      thresholdPoints.forEach((d, i) => {
+        const idx = data.indexOf(d);
+        i === 0 ? ctx.moveTo(xOf(idx), yOf(d.threshold)) : ctx.lineTo(xOf(idx), yOf(d.threshold));
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Stock line — gradient fill beneath
+    const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + plotH);
+    grad.addColorStop(0,   'rgba(63,185,80,0.25)');
+    grad.addColorStop(0.7, 'rgba(63,185,80,0.04)');
+    grad.addColorStop(1,   'rgba(63,185,80,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(data[0].stock));
+    data.forEach((d, i) => ctx.lineTo(xOf(i), yOf(d.stock)));
+    ctx.lineTo(xOf(data.length - 1), yOf(Math.max(minV, 0)));
+    ctx.lineTo(xOf(0), yOf(Math.max(minV, 0)));
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle = '#3fb950';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    data.forEach((d, i) => i === 0 ? ctx.moveTo(xOf(i), yOf(d.stock)) : ctx.lineTo(xOf(i), yOf(d.stock)));
+    ctx.stroke();
+
+    // Dots on warning weeks
+    data.forEach((d, i) => {
+      if (d.threshold > 0 && d.stock < d.threshold) {
+        ctx.beginPath();
+        ctx.arc(xOf(i), yOf(d.stock), 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#f85149';
+        ctx.fill();
+        ctx.strokeStyle = '#0d1117';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    });
+
+    // Final stock dot
+    const last = data[data.length - 1];
+    ctx.beginPath();
+    ctx.arc(xOf(data.length - 1), yOf(last.stock), 5, 0, Math.PI * 2);
+    ctx.fillStyle = last.stock < 0 ? '#f85149' : '#3fb950';
+    ctx.fill();
+    ctx.strokeStyle = '#0d1117';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Label final value
+    ctx.fillStyle = last.stock < 0 ? '#f85149' : '#3fb950';
+    ctx.font = 'bold 10px IBM Plex Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(last.stock).toLocaleString() + 't', xOf(data.length - 1) - 8, yOf(last.stock) - 8);
+  }
+
   function alignSidebar() {
     for (let m = 1; m <= 12; m++) {
       const weeks = MONTH_WEEKS[m];
@@ -1185,7 +1633,9 @@
 
   // Debounced save for initial stock
   document.getElementById('initial-stock').addEventListener('input', debounce(e => {
-    fbSave('initialStock', parseFloat(e.target.value) || 0);
+    const v = parseFloat(e.target.value) || 0;
+    logChange('initialStock', v, '');
+    fbSave('initialStock', v);
   }));
 
   // Wire every week input
@@ -1196,6 +1646,7 @@
       if (!inp) return;
       inp.addEventListener('input', debounce(() => {
         const v = inp.value.trim();
+        logChange(col, v !== '' ? parseFloat(v) : null, `W${String(w).padStart(2,'0')}`);
         fbSave(`weeks/w${w}/${col}`, v !== '' ? parseFloat(v) : null);
       }));
     });
@@ -1209,6 +1660,7 @@
       inp.addEventListener('input', () => recalcAll()); // update Contracts Left live
       inp.addEventListener('input', debounce(() => {
         const v = inp.value.trim();
+        logChange(`target_${col}`, v !== '' ? parseFloat(v) : null, MONTH_NAMES[m-1]);
         fbSave(`targets/m${m}/${col}`, v !== '' ? parseFloat(v) : null);
       }));
     });
@@ -1271,7 +1723,7 @@
     setTimeout(alignSidebar, 120);
   });
 
-  window.addEventListener('resize', alignSidebar);
+  window.addEventListener('resize', () => { alignSidebar(); recalcAll(); });
 
   // Expose functions used by inline onclick handlers (required for ES modules)
   window.recalcAll   = recalcAll;
